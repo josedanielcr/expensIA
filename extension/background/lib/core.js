@@ -303,6 +303,8 @@ const BackgroundCore = {
     });
 
     return {
+      messageId: data.id || messageId || "",
+      subject: BackgroundCore.readHeader(data.payload, "Subject"),
       sender: BackgroundCore.readHeader(data.payload, "From"),
       date: BackgroundCore.readHeader(data.payload, "Date"),
       message: BackgroundCore.extractMessageText(data.payload),

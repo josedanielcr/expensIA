@@ -25,17 +25,20 @@ public class OnEmailPush
     private readonly GoogleTokenValidator _tokenValidator;
     private readonly IOpenAiExpenseParser _expenseParser;
     private readonly ExchangeRateService _exchangeRateService;
+    private readonly TransactionPersistenceService _transactionPersistenceService;
 
     public OnEmailPush(
         ILogger<OnEmailPush> logger,
         GoogleTokenValidator tokenValidator,
         IOpenAiExpenseParser expenseParser,
-        ExchangeRateService exchangeRateService)
+        ExchangeRateService exchangeRateService,
+        TransactionPersistenceService transactionPersistenceService)
     {
         _logger = logger;
         _tokenValidator = tokenValidator;
         _expenseParser = expenseParser;
         _exchangeRateService = exchangeRateService;
+        _transactionPersistenceService = transactionPersistenceService;
     }
 
     [Function(FunctionName)]
@@ -62,21 +65,44 @@ public class OnEmailPush
         if (payloadValidationError is not null)
             return payloadValidationError;
 
-        await _tokenValidator.ValidateTokenAsync(token, ct);
-
-        var parsedEntries = await ParseEmailsAsync(
-            payload.Emails,
-            payload.Categories,
-            payload.ExclusionRules,
-            ct);
-        await ConvertUsdEntriesToCrcAsync(parsedEntries, ct);
-        var orderedEntries = OrderEntriesByDateOldestFirst(parsedEntries);
-        _logger.LogInformation(
-            "OnEmailPush completed. InvocationId={InvocationId} ParsedEntries={ParsedCount}",
+        var owner = await _tokenValidator.ValidateTokenAsync(token, ct)
+            ?? throw new UnauthorizedAccessException("Invalid Google token (empty response).");
+        var syncRun = await _transactionPersistenceService.StartSyncRunAsync(
+            owner,
+            payload.Emails.Count,
             context.InvocationId,
-            orderedEntries.Count);
+            ct);
 
-        return BuildSuccessResponse(orderedEntries);
+        try
+        {
+            var parsedEntries = await ParseEmailsAsync(
+                payload.Emails,
+                payload.Categories,
+                payload.ExclusionRules,
+                ct);
+            await ConvertUsdEntriesToCrcAsync(parsedEntries, ct);
+            await _transactionPersistenceService.PersistParsedTransactionsAsync(
+                syncRun,
+                payload.Emails,
+                parsedEntries,
+                owner,
+                ct);
+            var orderedEntries = OrderEntriesByDateOldestFirst(parsedEntries);
+            await _transactionPersistenceService.CompleteSyncRunAsync(syncRun, ct);
+
+            _logger.LogInformation(
+                "OnEmailPush completed. InvocationId={InvocationId} SyncRunId={SyncRunId} ParsedEntries={ParsedCount}",
+                context.InvocationId,
+                syncRun.Id,
+                orderedEntries.Count);
+
+            return BuildSuccessResponse(orderedEntries);
+        }
+        catch (Exception ex)
+        {
+            await MarkSyncRunFailedAsync(syncRun, ex, ct);
+            throw;
+        }
     }
 
     private IActionResult? ValidateRequest(OnEmailPushRequest payload)
@@ -99,6 +125,21 @@ public class OnEmailPush
 
     private static IActionResult BuildBadRequest(string message) =>
         new BadRequestObjectResult(new { error = message });
+
+    private async Task MarkSyncRunFailedAsync(SyncRun syncRun, Exception exception, CancellationToken ct)
+    {
+        try
+        {
+            await _transactionPersistenceService.FailSyncRunAsync(syncRun, exception, ct);
+        }
+        catch (Exception syncRunException)
+        {
+            _logger.LogError(
+                syncRunException,
+                "Failed to mark sync run as failed. SyncRunId={SyncRunId}",
+                syncRun.Id);
+        }
+    }
 
     private static string ExtractTokenFromAuthorizationHeader(HttpRequest req)
     {

@@ -62,6 +62,22 @@ Recommended safe flow:
 - Do not commit zip artifacts.
 - Keep `manifest.prod.json` and `manifest.staging.json` as source-of-truth; package via script.
 
+## Transaction persistence behavior
+- `OnEmailPush` validates the Google token, parses emails, converts USD to CRC when needed, then persists sync history before returning entries to the extension.
+- Supabase Postgres is the source of truth for stored transactions and sync runs.
+- Google Sheets remains an output layer; do not treat it as durable backend state.
+- Dedupe is by `owner_google_sub + message_id`; if `messageId` is missing, backend uses a content hash fallback.
+- Extension payloads should include `messageId`, `subject`, `sender`, `date`, and `message`.
+
+## Supabase connection behavior
+- Backend uses EF Core with Npgsql.
+- Use the Supabase pooler host because direct `db.<project>.supabase.co` connections are IPv6-only unless the paid IPv4 add-on is enabled.
+- Required app settings/secrets:
+  - `SUPABASE_HOST` in local/Azure settings, e.g. `aws-1-us-west-2.pooler.supabase.com`
+  - Key Vault secret `supabase-project-id`
+  - Key Vault secret `supabase-prod-db-password`
+- The provider builds username as `postgres.{projectId}` for the pooler.
+
 ## Exchange rate behavior (implemented)
 - USD transactions are converted to CRC before returning `OnEmailPush` response.
   - Implemented in `backend/functions/OnEmailPush.cs`.
