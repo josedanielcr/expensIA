@@ -5,12 +5,15 @@ importScripts(
   "background/handlers/extractEmailsFromLabel.js",
   "background/handlers/syncEmailsToSheet.js",
   "background/handlers/moveEmailsToProcessedLabel.js",
+  "background/handlers/reviewTransactions.js",
 );
 
 const MESSAGE_TYPES = {
   AUTH_SIGN_IN: "AUTH_SIGN_IN",
   AUTH_SIGN_OUT: "AUTH_SIGN_OUT",
   EXTRACT_EMAILS_FROM_LABEL: "EXTRACT_EMAILS_FROM_LABEL",
+  FETCH_PENDING_REVIEW_TRANSACTIONS: "FETCH_PENDING_REVIEW_TRANSACTIONS",
+  APPROVE_REVIEW_TRANSACTION: "APPROVE_REVIEW_TRANSACTION",
 };
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -28,6 +31,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
       if (msg.type === MESSAGE_TYPES.EXTRACT_EMAILS_FROM_LABEL) {
         sendResponse(await handleExtractEmailsFromLabel(msg));
+        return;
+      }
+
+      if (msg.type === MESSAGE_TYPES.FETCH_PENDING_REVIEW_TRANSACTIONS) {
+        sendResponse(await handleFetchPendingReviewTransactions());
+        return;
+      }
+
+      if (msg.type === MESSAGE_TYPES.APPROVE_REVIEW_TRANSACTION) {
+        sendResponse(await handleApproveReviewTransaction(msg));
         return;
       }
 

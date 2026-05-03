@@ -231,6 +231,11 @@ button.primary:hover {
   background: linear-gradient(180deg, #4a9aff, #287de8);
 }
 
+button.secondary {
+  min-height: 40px;
+  background: rgba(8, 30, 58, 0.58);
+}
+
 .icon-btn {
   width: auto;
   min-width: 92px;

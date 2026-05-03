@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const signOutBtn = document.getElementById("signOutBtn");
   const openSettingsBtn = document.getElementById("openSettings");
   const syncBtn = document.getElementById("syncBtn");
+  const openReviewBtn = document.getElementById("openReview");
   const syncIndicator = document.getElementById("syncIndicator");
   const processLogEl = document.getElementById("processLog");
   const useDateRangeEl = document.getElementById("useDateRange");
@@ -120,6 +121,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, 1600);
   }
 
+  function openReviewPage(pendingReviewCount = 0) {
+    const query = pendingReviewCount > 0
+      ? `?count=${encodeURIComponent(String(pendingReviewCount))}`
+      : "";
+    const reviewUrl = chrome.runtime.getURL(`review.html${query}`);
+    if (chrome.tabs?.create) {
+      chrome.tabs.create({ url: reviewUrl });
+      return;
+    }
+
+    window.open(reviewUrl, "_blank", "noopener");
+  }
+
   function toggleDateRangeUI() {
     const enabled = !!useDateRangeEl.checked;
     dateRangeFieldsEl.classList.toggle("hidden", !enabled);
@@ -148,6 +162,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     syncBtn.disabled = !signedIn;
+    openReviewBtn.disabled = !signedIn;
     if (!signedIn) setStatus(TEXT.SIGN_IN_TO_ENABLE_SYNC);
     else if (!sheetUrl) setStatus(TEXT.READY_TO_EXTRACT);
     else setStatus(TEXT.READY_TO_SYNC);
@@ -182,6 +197,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   openSettingsBtn.addEventListener("click", () => {
     chrome.runtime.openOptionsPage();
+  });
+
+  openReviewBtn.addEventListener("click", () => {
+    openReviewPage();
   });
 
   useDateRangeEl.addEventListener("change", async () => {
@@ -237,8 +256,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       setSyncIndicator("idle");
       updateStep("labels", "done", "Proceso finalizado");
+      const pendingReviewCount = Number(res.pendingReview || 0);
       if (res.noEmails) {
         setStatus(`No se encontraron correos en "${res.labelName}" para sincronizar.`);
+      } else if (pendingReviewCount > 0) {
+        const rowsAppended = Number(res.rowsAppended || 0);
+        const appendedText = rowsAppended > 0 ? `${rowsAppended} filas sincronizadas. ` : "";
+        setStatus(`${appendedText}${pendingReviewCount} gastos requieren revisión.`);
+        openReviewPage(pendingReviewCount);
       } else if ((res.rowsAppended || 0) === 0) {
         setStatus(`No se encontraron gastos nuevos para guardar desde "${res.labelName}".`);
       } else {

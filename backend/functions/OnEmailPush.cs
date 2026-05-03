@@ -87,16 +87,22 @@ public class OnEmailPush
                 parsedEntries,
                 owner,
                 ct);
-            var orderedEntries = OrderEntriesByDateOldestFirst(parsedEntries);
+            var sheetReadyEntries = parsedEntries
+                .Where(TransactionPersistenceService.IsSheetReadyAfterParsing)
+                .ToList();
+            var pendingReviewCount = parsedEntries.Count - sheetReadyEntries.Count;
+            var orderedEntries = OrderEntriesByDateOldestFirst(sheetReadyEntries);
             await _transactionPersistenceService.CompleteSyncRunAsync(syncRun, ct);
 
             _logger.LogInformation(
-                "OnEmailPush completed. InvocationId={InvocationId} SyncRunId={SyncRunId} ParsedEntries={ParsedCount}",
+                "OnEmailPush completed. InvocationId={InvocationId} SyncRunId={SyncRunId} ParsedEntries={ParsedCount} SheetReadyEntries={SheetReadyCount} PendingReviewEntries={PendingReviewCount}",
                 context.InvocationId,
                 syncRun.Id,
-                orderedEntries.Count);
+                parsedEntries.Count,
+                orderedEntries.Count,
+                pendingReviewCount);
 
-            return BuildSuccessResponse(orderedEntries);
+            return BuildSuccessResponse(orderedEntries, pendingReviewCount);
         }
         catch (Exception ex)
         {
@@ -153,10 +159,13 @@ public class OnEmailPush
         return header;
     }
 
-    private static IActionResult BuildSuccessResponse(List<ExpenseParseResult> parsedEntries) =>
+    private static IActionResult BuildSuccessResponse(
+        List<ExpenseParseResult> parsedEntries,
+        int pendingReviewCount) =>
         new OkObjectResult(new
         {
             total = parsedEntries.Count,
+            pendingReview = pendingReviewCount,
             entries = parsedEntries,
         });
 

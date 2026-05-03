@@ -1,8 +1,9 @@
 const DEFAULT_FUNCTION_HOST =
   "https://email-processor-ai-angubybzh5feb8ce.canadacentral-01.azurewebsites.net";
 const ON_EMAIL_PUSH_PATH = "/api/OnEmailPush";
+const REVIEW_TRANSACTIONS_PATH = "/api/review/transactions";
 
-function resolveOnEmailPushUrl() {
+function resolveFunctionUrl(path) {
   const manifest = chrome.runtime?.getManifest?.();
   const hostPermissions = manifest?.host_permissions || [];
   const azureHostPermission = hostPermissions.find((permission) =>
@@ -10,22 +11,38 @@ function resolveOnEmailPushUrl() {
   );
 
   if (!azureHostPermission) {
-    return `${DEFAULT_FUNCTION_HOST}${ON_EMAIL_PUSH_PATH}`;
+    return `${DEFAULT_FUNCTION_HOST}${path}`;
   }
 
   try {
     const origin = new URL(azureHostPermission.replace("*", "")).origin;
-    return `${origin}${ON_EMAIL_PUSH_PATH}`;
+    return `${origin}${path}`;
   } catch {
-    return `${DEFAULT_FUNCTION_HOST}${ON_EMAIL_PUSH_PATH}`;
+    return `${DEFAULT_FUNCTION_HOST}${path}`;
   }
 }
 
-const ON_EMAIL_PUSH_URL = resolveOnEmailPushUrl();
+const ON_EMAIL_PUSH_URL = resolveFunctionUrl(ON_EMAIL_PUSH_PATH);
+const REVIEW_TRANSACTIONS_URL = resolveFunctionUrl(REVIEW_TRANSACTIONS_PATH);
 
 const BackgroundCore = {
   async getAuthToken(interactive) {
     return await chrome.identity.getAuthToken({ interactive });
+  },
+
+  async getBackendAuthToken() {
+    const cachedTokenObject = await BackgroundCore.getAuthToken(false).catch(() => null);
+    const interactiveTokenObject = !cachedTokenObject
+      ? await BackgroundCore.getAuthToken(true)
+      : null;
+    const token =
+      BackgroundCore.tokenFromAuthResult(cachedTokenObject) ||
+      BackgroundCore.tokenFromAuthResult(interactiveTokenObject);
+    if (!token) {
+      throw new Error("No hay sesión activa. Inicia sesión nuevamente.");
+    }
+
+    return token;
   },
 
   tokenFromAuthResult(authResult) {
@@ -312,16 +329,7 @@ const BackgroundCore = {
   },
 
   async extractEmailsFromLabel(labelName, dateRange = null) {
-    const cachedTokenObject = await BackgroundCore.getAuthToken(false).catch(() => null);
-    const interactiveTokenObject = !cachedTokenObject
-      ? await BackgroundCore.getAuthToken(true)
-      : null;
-    const token =
-      BackgroundCore.tokenFromAuthResult(cachedTokenObject) ||
-      BackgroundCore.tokenFromAuthResult(interactiveTokenObject);
-    if (!token) {
-      throw new Error("No hay sesión activa. Inicia sesión nuevamente.");
-    }
+    const token = await BackgroundCore.getBackendAuthToken();
 
     const labelId = await BackgroundCore.findLabelIdByName(token, labelName);
     if (!labelId) {
@@ -427,6 +435,57 @@ const BackgroundCore = {
     if (!res.ok) {
       throw BackgroundCore.buildHttpError(
         "No se pudo procesar la información con el servidor.",
+        res.status,
+        body,
+      );
+    }
+
+    return body || {};
+  },
+
+  async fetchPendingReviewTransactions() {
+    const token = await BackgroundCore.getBackendAuthToken();
+    const res = await fetch(REVIEW_TRANSACTIONS_URL, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+
+    const text = await res.text();
+    const body = BackgroundCore.parseResponseBody(text);
+
+    if (!res.ok) {
+      throw BackgroundCore.buildHttpError(
+        "No se pudieron cargar las transacciones pendientes.",
+        res.status,
+        body,
+      );
+    }
+
+    return body || {};
+  },
+
+  async reviewTransactionAction(transactionId, payload) {
+    const token = await BackgroundCore.getBackendAuthToken();
+    const actionUrl = `${REVIEW_TRANSACTIONS_URL}/${encodeURIComponent(transactionId)}`;
+    const res = await fetch(actionUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload || {}),
+    });
+
+    const text = await res.text();
+    const body = BackgroundCore.parseResponseBody(text);
+
+    if (!res.ok) {
+      throw BackgroundCore.buildHttpError(
+        "No se pudo actualizar la transacción revisada.",
         res.status,
         body,
       );

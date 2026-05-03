@@ -1,7 +1,10 @@
 using System.Text.Json.Serialization;
 
-public sealed class ExpenseParseResult
+public sealed class ReviewTransactionActionRequest
 {
+    [JsonPropertyName("action")]
+    public string Action { get; set; } = "approve";
+
     [JsonPropertyName("date")]
     public string Date { get; set; } = string.Empty;
 
@@ -14,7 +17,6 @@ public sealed class ExpenseParseResult
     [JsonPropertyName("description")]
     public string Description { get; set; } = string.Empty;
 
-    [JsonPropertyName("confidence_score")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public decimal? ConfidenceScore { get; set; }
+    [JsonPropertyName("sheetRowId")]
+    public string SheetRowId { get; set; } = string.Empty;
 }

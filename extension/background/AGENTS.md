@@ -7,8 +7,10 @@ Background Gmail, backend, Sheets, and label orchestration lives here.
 1. `handlers/extractEmailsFromLabel.js` starts the user sync.
 2. `lib/core.js` reads Gmail messages and builds email payloads.
 3. `pushEmailsToBackend` sends emails to `/api/OnEmailPush`.
-4. Backend returns parsed `entries`.
-5. Existing flow appends entries to Sheets and moves Gmail labels.
+4. Backend persists all parsed transactions, including pending-review rows.
+5. Backend returns only sheet-ready parsed `entries` plus `pendingReview` count.
+6. Existing flow appends returned entries to Sheets and moves Gmail labels.
+7. If `pendingReview > 0`, popup opens the dedicated review UI.
 
 ## Email payload
 - Build payload fields in `BackgroundCore.fetchMessageMetadata`.
@@ -18,3 +20,5 @@ Background Gmail, backend, Sheets, and label orchestration lives here.
 ## Boundaries
 - Do not call Supabase from the extension.
 - Do not hardcode backend environment URLs; use manifest host permissions.
+- Review fetch/approve calls go through `handlers/reviewTransactions.js`.
+- On review approval, the background flow updates the backend first, appends the returned final row to Google Sheets, then marks the backend transaction as `sheet_synced`.

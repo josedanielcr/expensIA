@@ -63,11 +63,26 @@ Recommended safe flow:
 - Keep `manifest.prod.json` and `manifest.staging.json` as source-of-truth; package via script.
 
 ## Transaction persistence behavior
-- `OnEmailPush` validates the Google token, parses emails, converts USD to CRC when needed, then persists sync history before returning entries to the extension.
+- `OnEmailPush` validates the Google token, parses emails, converts USD to CRC when needed, persists sync history, then returns only sheet-ready entries to the extension.
 - Supabase Postgres is the source of truth for stored transactions and sync runs.
 - Google Sheets remains an output layer; do not treat it as durable backend state.
 - Dedupe is by `owner_google_sub + message_id`; if `messageId` is missing, backend uses a content hash fallback.
 - Extension payloads should include `messageId`, `subject`, `sender`, `date`, and `message`.
+
+## Review workflow behavior
+- Parser output includes `confidence_score` as a normalized `0..1` value.
+- `confidence_score < 0.80` routes a stored transaction to review:
+  - `review_status = pending_review`
+  - `sheet_sync_status = not_ready`
+  - `review_reason` is stored in Spanish for display in the review UI.
+- Missing `confidence_score` also routes to review.
+- Auto-approved transactions use:
+  - `review_status = approved`
+  - `sheet_sync_status = ready`
+- `OnEmailPush` response includes only approved/sheet-ready entries in `entries` so the existing extension Sheet append path does not append pending-review transactions.
+- `OnEmailPush` also returns `pendingReview` with the count filtered out for review.
+- The extension review UI loads pending-review rows from `/api/review/transactions`.
+- Approving from the review UI posts corrections to `/api/review/transactions/{transactionId}`, appends the returned final row to Google Sheets, then calls the same endpoint with `mark_sheet_synced`.
 
 ## Supabase connection behavior
 - Backend uses EF Core with Npgsql.

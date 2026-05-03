@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>ExpensIA - Revisión</title>
+    <link rel="stylesheet" href="review.css" />
+  </head>
+
+  <body>
+    <main class="review-shell">
+      <header class="review-top">
+        <div>
+          <div class="brand">ExpensIA</div>
+          <h1>Revisión de gastos</h1>
+        </div>
+        <button id="refreshBtn" class="button icon-button" type="button" aria-label="Actualizar" title="Actualizar">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 6v5h-5"></path>
+            <path d="M4 18v-5h5"></path>
+            <path d="M18.5 9A7 7 0 0 0 6.6 6.6L4 9"></path>
+            <path d="M5.5 15A7 7 0 0 0 17.4 17.4L20 15"></path>
+          </svg>
+        </button>
+      </header>
+
+      <section class="summary-row" aria-live="polite">
+        <div>
+          <span>Pendientes</span>
+          <strong id="pendingCount">0</strong>
+        </div>
+        <div>
+          <span>Aprobados</span>
+          <strong id="approvedCount">0</strong>
+        </div>
+        <div>
+          <span>Estado</span>
+          <strong id="reviewStatus">Cargando</strong>
+        </div>
+      </section>
+
+      <section class="review-layout">
+        <aside class="queue-panel">
+          <div class="panel-head">
+            <h2>Pendientes</h2>
+          </div>
+          <div id="pendingList" class="pending-list"></div>
+          <div id="emptyState" class="empty-state hidden">No hay gastos pendientes.</div>
+        </aside>
+
+        <section class="detail-panel">
+          <div id="detailEmpty" class="detail-empty">Sin pendientes.</div>
+
+          <form id="reviewForm" class="review-form hidden">
+            <div class="form-head">
+              <div>
+                <h2 id="detailTitle"></h2>
+                <p id="detailSubtitle"></p>
+              </div>
+              <span id="confidenceBadge" class="confidence-badge"></span>
+            </div>
+
+            <div class="field-grid">
+              <label>
+                <span>Fecha</span>
+                <input id="dateInput" type="date" />
+              </label>
+              <label>
+                <span>Monto</span>
+                <input id="amountInput" inputmode="decimal" autocomplete="off" />
+              </label>
+              <label>
+                <span>Categoría</span>
+                <select id="categoryInput"></select>
+              </label>
+              <label>
+                <span>Descripción</span>
+                <input id="descriptionInput" autocomplete="off" />
+              </label>
+            </div>
+
+            <div class="message-box">
+              <strong>Motivo</strong>
+              <p id="reviewReason"></p>
+            </div>
+
+            <div class="email-box">
+              <strong>Correo</strong>
+              <p id="emailContext"></p>
+            </div>
+
+            <div class="form-actions">
+              <button id="approveBtn" class="button primary" type="submit">Aprobar</button>
+              <button id="resetBtn" class="button secondary" type="button">Restaurar</button>
+            </div>
+          </form>
+        </section>
+      </section>
+    </main>
+
+    <script src="review.js"></script>
+  </body>
+</html>

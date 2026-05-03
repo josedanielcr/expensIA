@@ -13,6 +13,9 @@ public sealed class TransactionPersistenceService
     private const string ConfigOpenAiModel = "OPENAI_MODEL";
     private const string CurrencyCodePattern = @"\(([A-Za-z]{3})\)";
     private const string NonTransactionCategory = "N/A";
+    private const decimal AutoApprovalConfidenceThreshold = 0.80m;
+    private const string LowConfidenceReviewReason = "Confianza menor al 80%; requiere revisión antes de enviarse a Google Sheets.";
+    private const string MissingConfidenceReviewReason = "Score de confianza ausente; requiere revisión antes de enviarse a Google Sheets.";
     private static readonly Regex CurrencyCodeRegex = new(CurrencyCodePattern, RegexOptions.Compiled);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -105,7 +108,7 @@ public sealed class TransactionPersistenceService
                 .ToListAsync(ct))
             .ToHashSet(StringComparer.Ordinal);
 
-        var inserted = 0;
+        var insertedRows = new List<StoredTransaction>();
         var duplicates = 0;
         foreach (var row in rows)
         {
@@ -116,7 +119,7 @@ public sealed class TransactionPersistenceService
             }
 
             _db.Transactions.Add(row);
-            inserted++;
+            insertedRows.Add(row);
 
             if (!string.IsNullOrWhiteSpace(row.MessageId))
                 existingMessageIds.Add(row.MessageId);
@@ -125,11 +128,11 @@ public sealed class TransactionPersistenceService
         }
 
         syncRun.EmailsProcessedCount = parsedEntries.Count;
-        syncRun.TransactionsCreatedCount = inserted;
+        syncRun.TransactionsCreatedCount = insertedRows.Count;
         syncRun.DuplicatesCount = duplicates;
-        syncRun.ApprovedCount = inserted;
-        syncRun.SheetReadyCount = inserted;
-        syncRun.PendingReviewCount = 0;
+        syncRun.ApprovedCount = insertedRows.Count(row => row.ReviewStatus == TransactionReviewStatus.Approved);
+        syncRun.SheetReadyCount = insertedRows.Count(row => row.SheetSyncStatus == SheetSyncStatus.Ready);
+        syncRun.PendingReviewCount = insertedRows.Count(row => row.ReviewStatus == TransactionReviewStatus.PendingReview);
         syncRun.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _db.SaveChangesAsync(ct);
@@ -137,11 +140,14 @@ public sealed class TransactionPersistenceService
         _logger.LogInformation(
             "Transactions persisted. SyncRunId={SyncRunId} Created={CreatedCount} Duplicates={DuplicateCount}",
             syncRun.Id,
-            inserted,
+            insertedRows.Count,
             duplicates);
 
-        return new TransactionPersistenceResult(inserted, duplicates);
+        return new TransactionPersistenceResult(insertedRows.Count, duplicates);
     }
+
+    public static bool IsSheetReadyAfterParsing(ExpenseParseResult parsed)
+        => !RequiresReview(parsed);
 
     public async Task CompleteSyncRunAsync(SyncRun syncRun, CancellationToken ct)
     {
@@ -188,6 +194,7 @@ public sealed class TransactionPersistenceService
             var contentHash = string.IsNullOrWhiteSpace(messageId)
                 ? BuildContentHash(email)
                 : null;
+            var requiresReview = RequiresReview(parsed);
 
             rows.Add(new StoredTransaction
             {
@@ -206,8 +213,14 @@ public sealed class TransactionPersistenceService
                 TransactionDate = TryParseDateOnly(parsed.Date),
                 Amount = TryParseAmount(parsed.Amount),
                 Currency = ExtractCurrency(parsed.Description),
-                ReviewStatus = TransactionReviewStatus.Approved,
-                SheetSyncStatus = SheetSyncStatus.Ready,
+                ConfidenceScore = parsed.ConfidenceScore,
+                ReviewStatus = requiresReview
+                    ? TransactionReviewStatus.PendingReview
+                    : TransactionReviewStatus.Approved,
+                ReviewReason = requiresReview ? BuildReviewReason(parsed) : null,
+                SheetSyncStatus = requiresReview
+                    ? SheetSyncStatus.NotReady
+                    : SheetSyncStatus.Ready,
                 ParserVersion = ParserVersion,
                 ParserModel = _configuration[ConfigOpenAiModel],
                 ParsedAt = now,
@@ -227,6 +240,15 @@ public sealed class TransactionPersistenceService
 
         return rows;
     }
+
+    private static bool RequiresReview(ExpenseParseResult parsed)
+        => !parsed.ConfidenceScore.HasValue ||
+           parsed.ConfidenceScore.Value < AutoApprovalConfidenceThreshold;
+
+    private static string BuildReviewReason(ExpenseParseResult parsed)
+        => parsed.ConfidenceScore.HasValue
+            ? LowConfidenceReviewReason
+            : MissingConfidenceReviewReason;
 
     private static bool IsDuplicate(
         StoredTransaction row,

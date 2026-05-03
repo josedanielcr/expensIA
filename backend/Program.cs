@@ -19,5 +19,6 @@ builder.Services.AddHttpClient<IOpenAiExpenseParser, OpenAiExpenseParser>();
 builder.Services.AddHttpClient<ExchangeRateService>();
 builder.Services.AddSupabaseDatabase();
 builder.Services.AddScoped<TransactionPersistenceService>();
+builder.Services.AddScoped<TransactionReviewService>();
 
 builder.Build().Run();

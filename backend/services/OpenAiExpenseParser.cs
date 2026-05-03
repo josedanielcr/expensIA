@@ -404,6 +404,7 @@ public sealed class OpenAiExpenseParser : IOpenAiExpenseParser
             result.Amount = result.Amount.Trim();
             result.Category = result.Category.Trim();
             result.Description = result.Description.Trim();
+            result.ConfidenceScore = NormalizeConfidenceScore(result.ConfidenceScore);
 
             if (IsNonTransactionalResult(result))
             {
@@ -481,7 +482,25 @@ public sealed class OpenAiExpenseParser : IOpenAiExpenseParser
         return root.TryGetProperty("date", out _) ||
                root.TryGetProperty("amount", out _) ||
                root.TryGetProperty("category", out _) ||
-               root.TryGetProperty("description", out _);
+               root.TryGetProperty("description", out _) ||
+               root.TryGetProperty("confidence_score", out _);
+    }
+
+    private static decimal? NormalizeConfidenceScore(decimal? score)
+    {
+        if (!score.HasValue)
+            return null;
+
+        if (score.Value < 0)
+            return 0;
+
+        if (score.Value <= 1)
+            return score.Value;
+
+        if (score.Value <= 100)
+            return score.Value / 100;
+
+        return 1;
     }
 
     private static string Truncate(string value, int maxChars)
