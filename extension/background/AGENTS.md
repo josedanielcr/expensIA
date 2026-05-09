@@ -22,3 +22,5 @@ Background Gmail, backend, Sheets, and label orchestration lives here.
 - Do not hardcode backend environment URLs; use manifest host permissions.
 - Review fetch/approve calls go through `handlers/reviewTransactions.js`.
 - On review approval, the background flow updates the backend first, appends the returned final row to Google Sheets, then marks the backend transaction as `sheet_synced`.
+- Keep the review approval flow sequential and defensive: do not mark `sheet_synced` unless the Sheets append succeeds.
+- Surface errors back to the review page so it can re-enable controls and show a concise failure state.

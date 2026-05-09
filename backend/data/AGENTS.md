@@ -15,6 +15,8 @@ EF Core persistence mapping lives here.
 - `transactions.review_status` is `approved` for sheet-ready parser results and `pending_review` for missing or low confidence.
 - `transactions.review_reason` should be user-facing Spanish text.
 - `transactions.sheet_sync_status` is `ready` only when the extension may append the transaction to Google Sheets; pending-review rows use `not_ready`.
+- Reviewed/corrected rows move to `ready` before Sheets append; after successful append they move to `sheet_synced`.
+- `review_events` records approve/correct and mark-sheet-synced actions for reviewed transactions.
 - `review_events` and `merchant_rules` are mapped for upcoming review/learning milestones.
 
 ## Dedupe contract

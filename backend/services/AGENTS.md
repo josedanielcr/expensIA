@@ -22,3 +22,5 @@ Backend business services and external integrations live here.
 - Use the `0.80` confidence threshold for automatic approval.
 - Low-confidence or missing-score transactions are `PendingReview` and `NotReady`; their `ReviewReason` is stored in Spanish for the extension UI.
 - `IsSheetReadyAfterParsing` is the shared helper for filtering response entries to the extension.
+- Review approval must persist corrected date, amount, category, and description before returning the final row for Sheets append.
+- Sheet sync marking should be a separate action after Sheets append succeeds, not part of the initial approve/correct action.

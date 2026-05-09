@@ -83,6 +83,11 @@ Recommended safe flow:
 - `OnEmailPush` also returns `pendingReview` with the count filtered out for review.
 - The extension review UI loads pending-review rows from `/api/review/transactions`.
 - Approving from the review UI posts corrections to `/api/review/transactions/{transactionId}`, appends the returned final row to Google Sheets, then calls the same endpoint with `mark_sheet_synced`.
+- Review UI must show preventive loading/in-flight states:
+  - show a loading indicator while fetching pending transactions.
+  - disable review form controls and show an approval spinner while approve/correct + Sheets append + mark-synced is running.
+  - prevent duplicate approval submissions while backend/Sheets work is in progress.
+- If the user needs a missing category during review, the review screen can add it inline to `chrome.storage.sync.categories` or open the full settings page.
 
 ## Supabase connection behavior
 - Backend uses EF Core with Npgsql.

@@ -7,7 +7,7 @@
         "GOOGLE_REQUIRED_SCOPES": "https://www.googleapis.com/auth/gmail.readonly",
         "KEY_VAULT_LOAD_ON_STARTUP": "false",
         "KEY_VAULT_URI": "https://ai-gastos-vault.vault.azure.net/",
-        "OPENAI_MODEL": "gpt-5-nano",
+        "OPENAI_MODEL": "gpt-5.4-nano",
         "OPENAI_SYSTEM_PROMPT": "You extract expense data from emails and must follow output rules strictly. Return only a JSON array where each item has keys: date, amount, category, description, confidence_score.",
         "OPENAI_EMAIL_BATCH_SIZE": "5",
         "OPENAI_BATCH_CONCURRENCY": "2",

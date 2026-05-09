@@ -43,6 +43,10 @@
           <div class="panel-head">
             <h2>Pendientes</h2>
           </div>
+          <div id="loadingState" class="loading-state hidden">
+            <span class="mini-spinner" aria-hidden="true"></span>
+            <span>Cargando pendientes</span>
+          </div>
           <div id="pendingList" class="pending-list"></div>
           <div id="emptyState" class="empty-state hidden">No hay gastos pendientes.</div>
         </aside>
@@ -68,10 +72,17 @@
                 <span>Monto</span>
                 <input id="amountInput" inputmode="decimal" autocomplete="off" />
               </label>
-              <label>
-                <span>Categoría</span>
+              <div class="field-block category-field">
+                <div class="field-line">
+                  <label for="categoryInput">Categoría</label>
+                  <button id="openSettingsBtn" class="text-button" type="button">Ajustes</button>
+                </div>
                 <select id="categoryInput"></select>
-              </label>
+                <div class="category-add">
+                  <input id="newCategoryInput" autocomplete="off" placeholder="Nueva categoría" />
+                  <button id="addCategoryBtn" class="button secondary" type="button">Agregar</button>
+                </div>
+              </div>
               <label>
                 <span>Descripción</span>
                 <input id="descriptionInput" autocomplete="off" />
@@ -89,7 +100,10 @@
             </div>
 
             <div class="form-actions">
-              <button id="approveBtn" class="button primary" type="submit">Aprobar</button>
+              <button id="approveBtn" class="button primary action-button" type="submit">
+                <span class="button-spinner" aria-hidden="true"></span>
+                <span id="approveBtnText">Aprobar</span>
+              </button>
               <button id="resetBtn" class="button secondary" type="button">Restaurar</button>
             </div>
           </form>

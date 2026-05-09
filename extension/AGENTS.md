@@ -21,9 +21,14 @@ Chrome extension source lives here. Keep the popup simple and put review-specifi
 ## Review UI behavior
 - Review UI fetches pending rows through the background worker, which calls `/api/review/transactions`.
 - Review rows include `id`, `date`, `amount`, `category`, `description`, `confidence_score`, `review_reason`, `subject`, and `sender`.
-- The review page supports editing date, amount, category, and description, then approving locally.
+- The review page supports editing date, amount, category, and description before approval.
+- The review page also lets users add a missing category inline and provides a shortcut to the full settings page.
+- Inline category additions are saved to `chrome.storage.sync.categories` and immediately selected in the review form.
 - Approval is not purely local: the background worker posts corrections to the backend, appends the returned row to Google Sheets, then marks the row `sheet_synced` through the same backend action endpoint.
 - Display `review_reason` directly when the backend provides Spanish text; only map legacy/internal codes as fallback.
+- Show a queue loading spinner while pending rows load.
+- During approval, disable the form, category controls, refresh, and settings shortcut; show an `Aprobando` spinner in the approve button and ignore duplicate submits.
+- Keep the refresh control as an icon button, not a full text button.
 
 ## Packaging
 - Use `./build-extension-zip.sh prod` or `./build-extension-zip.sh staging`.

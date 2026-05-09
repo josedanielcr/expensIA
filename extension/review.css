@@ -129,6 +129,32 @@ h2 {
   background: var(--btn-hover);
 }
 
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.button-spinner {
+  display: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(232, 243, 255, 0.3);
+  border-top-color: var(--text-main);
+  border-radius: 999px;
+  animation: spin 750ms linear infinite;
+}
+
+.action-button.loading .button-spinner {
+  display: inline-block;
+}
+
 .icon-button {
   display: grid;
   place-items: center;
@@ -209,6 +235,26 @@ h2 {
 .pending-list {
   overflow: auto;
   padding: 8px;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 180px;
+  padding: 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.mini-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(170, 209, 247, 0.24);
+  border-top-color: #8fd0ff;
+  border-radius: 999px;
+  animation: spin 750ms linear infinite;
 }
 
 .pending-card {
@@ -325,6 +371,49 @@ label {
   font-weight: 650;
 }
 
+.field-block {
+  display: grid;
+  gap: 7px;
+}
+
+.field-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.field-line label {
+  display: block;
+}
+
+.text-button {
+  width: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.text-button:hover {
+  color: var(--text-main);
+  background: transparent;
+}
+
+.category-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.category-add .button {
+  min-height: 42px;
+}
+
 input,
 select {
   width: 100%;
@@ -336,6 +425,12 @@ select {
   color: var(--text-main);
   font: inherit;
   font-size: 14px;
+}
+
+input:disabled,
+select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 input:focus-visible,
@@ -401,5 +496,11 @@ button:focus-visible {
 
   .review-layout {
     min-height: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }

@@ -33,6 +33,8 @@ Backend Azure Functions live here. Keep changes small and consistent with the ex
 - Review mutation/query behavior belongs in `TransactionReviewService`; keep endpoint functions thin.
 - `GET /api/review/transactions` returns current-user pending-review rows only.
 - `POST /api/review/transactions/{transactionId}` supports approving/correcting a row and marking it `sheet_synced`.
+- Approve/correct should update the stored final transaction state before the extension appends it to Google Sheets.
+- Marking a transaction `sheet_synced` happens only after the extension has successfully appended the final row to Google Sheets.
 
 ## Supabase connection
 - Use EF Core/Npgsql.

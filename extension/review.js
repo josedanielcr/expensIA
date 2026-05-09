@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const approvedCountEl = document.getElementById("approvedCount");
   const reviewStatusEl = document.getElementById("reviewStatus");
   const pendingListEl = document.getElementById("pendingList");
+  const loadingStateEl = document.getElementById("loadingState");
   const emptyStateEl = document.getElementById("emptyState");
   const detailEmptyEl = document.getElementById("detailEmpty");
   const reviewFormEl = document.getElementById("reviewForm");
@@ -31,23 +32,38 @@ document.addEventListener("DOMContentLoaded", async () => {
   const dateInputEl = document.getElementById("dateInput");
   const amountInputEl = document.getElementById("amountInput");
   const categoryInputEl = document.getElementById("categoryInput");
+  const newCategoryInputEl = document.getElementById("newCategoryInput");
+  const addCategoryBtn = document.getElementById("addCategoryBtn");
+  const openSettingsBtn = document.getElementById("openSettingsBtn");
   const descriptionInputEl = document.getElementById("descriptionInput");
   const reviewReasonEl = document.getElementById("reviewReason");
   const emailContextEl = document.getElementById("emailContext");
   const refreshBtn = document.getElementById("refreshBtn");
   const resetBtn = document.getElementById("resetBtn");
+  const approveBtn = document.getElementById("approveBtn");
+  const approveBtnText = document.getElementById("approveBtnText");
 
   let categories = [...DEFAULT_CATEGORIES];
   let pendingItems = [];
   let approvedItems = [];
   let selectedId = "";
+  let isLoading = false;
+  let isApproving = false;
+
+  function normalizeCategory(value) {
+    return String(value || "").trim();
+  }
 
   async function loadCategories() {
     const stored = await chrome.storage.sync.get(["categories"]);
     const configured = Array.isArray(stored.categories)
-      ? stored.categories.map((item) => String(item || "").trim()).filter(Boolean)
+      ? stored.categories.map(normalizeCategory).filter(Boolean)
       : [];
     categories = configured.length > 0 ? configured : [...DEFAULT_CATEGORIES];
+  }
+
+  async function persistCategories() {
+    await chrome.storage.sync.set({ categories });
   }
 
   async function fetchPendingReviewItems() {
@@ -92,10 +108,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderCounts() {
     pendingCountEl.textContent = String(pendingItems.length);
     approvedCountEl.textContent = String(approvedItems.length);
-    reviewStatusEl.textContent = pendingItems.length > 0 ? "En revisión" : "Sin pendientes";
+    refreshBtn.disabled = isLoading || isApproving;
+    if (isLoading) {
+      reviewStatusEl.textContent = "Cargando";
+    } else {
+      reviewStatusEl.textContent = pendingItems.length > 0 ? "En revisión" : "Sin pendientes";
+    }
   }
 
   function renderPendingList() {
+    loadingStateEl.classList.toggle("hidden", !isLoading);
+    if (isLoading) {
+      pendingListEl.replaceChildren();
+      emptyStateEl.classList.add("hidden");
+      return;
+    }
+
     pendingListEl.replaceChildren(
       ...pendingItems.map((item) => {
         const button = document.createElement("button");
@@ -149,12 +177,54 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderCategoryOptions(item.category || "");
     reviewReasonEl.textContent = getReasonText(item);
     emailContextEl.textContent = `${item.subject || "Sin asunto"} desde ${item.sender || "remitente desconocido"}`;
+    setApprovalState(isApproving);
   }
 
   function render() {
     renderCounts();
     renderPendingList();
     renderDetail();
+  }
+
+  function setApprovalState(active) {
+    isApproving = active;
+    const disabled = active || !getSelectedItem();
+    approveBtn.disabled = disabled;
+    resetBtn.disabled = active;
+    categoryInputEl.disabled = active;
+    dateInputEl.disabled = active;
+    amountInputEl.disabled = active;
+    descriptionInputEl.disabled = active;
+    newCategoryInputEl.disabled = active;
+    addCategoryBtn.disabled = active;
+    openSettingsBtn.disabled = active;
+    refreshBtn.disabled = isLoading || active;
+    approveBtn.classList.toggle("loading", active);
+    approveBtnText.textContent = active ? "Aprobando" : "Aprobar";
+  }
+
+  async function addCategoryFromReview() {
+    const newCategory = normalizeCategory(newCategoryInputEl.value);
+    if (!newCategory) {
+      reviewStatusEl.textContent = "Categoría vacía";
+      return;
+    }
+
+    const existing = categories.find(
+      (category) => category.toLowerCase() === newCategory.toLowerCase(),
+    );
+    if (existing) {
+      categoryInputEl.value = existing;
+      newCategoryInputEl.value = "";
+      reviewStatusEl.textContent = "Categoría existente";
+      return;
+    }
+
+    categories = [...categories, newCategory];
+    await persistCategories();
+    renderCategoryOptions(newCategory);
+    newCategoryInputEl.value = "";
+    reviewStatusEl.textContent = "Categoría agregada";
   }
 
   function readFormValues() {
@@ -180,6 +250,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function approveSelected() {
+    if (isApproving) return;
+
     const item = getSelectedItem();
     if (!item) return;
 
@@ -191,6 +263,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     reviewStatusEl.textContent = "Aprobando";
+    setApprovalState(true);
     const result = await chrome.runtime.sendMessage({
       type: MESSAGE_TYPES.APPROVE_REVIEW_TRANSACTION,
       transactionId: item.id,
@@ -203,18 +276,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     pendingItems = pendingItems.filter((pending) => pending.id !== item.id);
     approvedItems = [result.entry || { ...item, ...values }, ...approvedItems];
     selectedId = pendingItems[0]?.id || "";
+    setApprovalState(false);
     render();
   }
 
   async function loadPendingReview() {
     try {
-      reviewStatusEl.textContent = "Cargando";
+      isLoading = true;
+      pendingItems = [];
+      selectedId = "";
+      render();
       await loadCategories();
       pendingItems = await fetchPendingReviewItems();
       approvedItems = [];
       selectedId = pendingItems[0]?.id || "";
+      isLoading = false;
       render();
     } catch (err) {
+      isLoading = false;
       pendingItems = [];
       selectedId = "";
       render();
@@ -227,12 +306,35 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       await approveSelected();
     } catch (err) {
+      setApprovalState(false);
       reviewStatusEl.textContent = err?.message || "No se pudo aprobar la transacción.";
     }
   });
 
   resetBtn.addEventListener("click", () => {
     renderDetail();
+  });
+
+  addCategoryBtn.addEventListener("click", async () => {
+    try {
+      await addCategoryFromReview();
+    } catch (err) {
+      reviewStatusEl.textContent = err?.message || "No se pudo agregar";
+    }
+  });
+
+  newCategoryInputEl.addEventListener("keydown", async (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    try {
+      await addCategoryFromReview();
+    } catch (err) {
+      reviewStatusEl.textContent = err?.message || "No se pudo agregar";
+    }
+  });
+
+  openSettingsBtn.addEventListener("click", () => {
+    chrome.runtime.openOptionsPage();
   });
 
   refreshBtn.addEventListener("click", async () => {
