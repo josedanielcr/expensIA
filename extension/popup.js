@@ -19,14 +19,13 @@ const TEXT = {
   NOT_SIGNED_IN: "Sin sesión iniciada",
   SIGNED_IN_PREFIX: "Sesión iniciada: ",
   SIGN_IN_TO_ENABLE_SYNC: "Inicia sesión para habilitar la sincronización",
-  READY_TO_EXTRACT: "Listo para extraer correos (la hoja aún no está configurada)",
-  READY_TO_SYNC: "Listo para sincronizar",
+  READY_TO_EXTRACT: "Puedes revisar correos. Configura Sheets para guardar filas.",
+  READY_TO_SYNC: "Listo para sincronizar gastos.",
   SIGNING_IN: "Iniciando sesión...",
   SIGNED_IN_SUCCESS: "Sesión iniciada",
   SIGNING_OUT: "Cerrando sesión...",
   SIGNED_OUT_SUCCESS: "Sesión cerrada",
-  FETCHING_LABELED_EMAILS: "Sincronizando correos y gastos...",
-  SYNC_SUCCESS_PREFIX: "Sincronizado",
+  FETCHING_LABELED_EMAILS: "Sincronizando gastos...",
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -261,13 +260,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         setStatus(`No se encontraron correos en "${res.labelName}" para sincronizar.`);
       } else if (pendingReviewCount > 0) {
         const rowsAppended = Number(res.rowsAppended || 0);
-        const appendedText = rowsAppended > 0 ? `${rowsAppended} filas sincronizadas. ` : "";
-        setStatus(`${appendedText}${pendingReviewCount} gastos requieren revisión.`);
+        const appendedText = rowsAppended > 0 ? `${rowsAppended} gastos enviados a Sheets. ` : "";
+        setStatus(`${appendedText}${pendingReviewCount} quedaron para revisar antes de enviarse.`);
         openReviewPage(pendingReviewCount);
       } else if ((res.rowsAppended || 0) === 0) {
         setStatus(`No se encontraron gastos nuevos para guardar desde "${res.labelName}".`);
       } else {
-        setStatus(`${TEXT.SYNC_SUCCESS_PREFIX} ${res.rowsAppended || 0} filas desde "${res.labelName}"`);
+        setStatus(`${res.rowsAppended || 0} gastos enviados a Sheets.`);
       }
       clearProcessLogSoon();
     } catch (err) {

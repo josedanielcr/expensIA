@@ -8,10 +8,26 @@
 
   <body>
     <main class="review-shell">
+      <header class="app-header">
+        <div class="brand-lockup">
+          <span class="logo-mark" aria-hidden="true">
+            <img src="assets/Logo (icon) 32.png" alt="" />
+          </span>
+          <div>
+            <div class="brand">ExpensIA</div>
+            <div class="brand-note">Panel</div>
+          </div>
+        </div>
+        <nav class="workspace-tabs" aria-label="Secciones">
+          <a class="active" href="review.html" aria-current="page">Revisión</a>
+          <a href="options.html">Ajustes</a>
+        </nav>
+      </header>
+
       <header class="review-top">
         <div>
-          <div class="brand">ExpensIA</div>
           <h1>Revisión de gastos</h1>
+          <p class="sub">Confirma los gastos con baja confianza antes de enviarlos.</p>
         </div>
         <button id="refreshBtn" class="button icon-button" type="button" aria-label="Actualizar" title="Actualizar">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -29,7 +45,7 @@
           <strong id="pendingCount">0</strong>
         </div>
         <div>
-          <span>Aprobados</span>
+          <span>Aprobados ahora</span>
           <strong id="approvedCount">0</strong>
         </div>
         <div>
@@ -48,11 +64,17 @@
             <span>Cargando pendientes</span>
           </div>
           <div id="pendingList" class="pending-list"></div>
-          <div id="emptyState" class="empty-state hidden">No hay gastos pendientes.</div>
+          <div id="emptyState" class="empty-state hidden">
+            <strong>Todo al día</strong>
+            <span>No hay gastos pendientes de revisión. Cuando ExpensIA detecte un gasto con baja confianza, aparecerá aquí.</span>
+          </div>
         </aside>
 
         <section class="detail-panel">
-          <div id="detailEmpty" class="detail-empty">Sin pendientes.</div>
+          <div id="detailEmpty" class="detail-empty">
+            <strong>Todo al día</strong>
+            <span>No hay gastos pendientes de revisión. Cuando ExpensIA detecte un gasto con baja confianza, aparecerá aquí.</span>
+          </div>
 
           <form id="reviewForm" class="review-form hidden">
             <div class="form-head">
@@ -75,7 +97,7 @@
               <div class="field-block category-field">
                 <div class="field-line">
                   <label for="categoryInput">Categoría</label>
-                  <button id="openSettingsBtn" class="text-button" type="button">Ajustes</button>
+                  <button id="openSettingsBtn" class="text-button" type="button">Editar categorías</button>
                 </div>
                 <select id="categoryInput"></select>
                 <div class="category-add">
@@ -90,19 +112,19 @@
             </div>
 
             <div class="message-box">
-              <strong>Motivo</strong>
+              <strong>Por qué revisar</strong>
               <p id="reviewReason"></p>
             </div>
 
             <div class="email-box">
-              <strong>Correo</strong>
+              <strong>Contexto del correo</strong>
               <p id="emailContext"></p>
             </div>
 
             <div class="form-actions">
               <button id="approveBtn" class="button primary action-button" type="submit">
                 <span class="button-spinner" aria-hidden="true"></span>
-                <span id="approveBtnText">Aprobar</span>
+                <span id="approveBtnText">Aprobar y enviar a Sheets</span>
               </button>
               <button id="resetBtn" class="button secondary" type="button">Restaurar</button>
             </div>

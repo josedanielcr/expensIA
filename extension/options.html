@@ -7,67 +7,44 @@
   </head>
   <body>
     <div class="container">
-      <header class="page-head">
-        <div class="page-copy">
-          <h2>Configura ExpensIA</h2>
-          <p class="sub">
-            Define qué correos se leen, cómo se clasifican y en qué hoja se guardan.
-          </p>
+      <header class="app-header">
+        <div class="brand-lockup">
+          <span class="logo-mark" aria-hidden="true">
+            <img src="assets/Logo (icon) 32.png" alt="" />
+          </span>
+          <div>
+            <div class="brand">ExpensIA</div>
+            <div class="brand-note">Panel</div>
+          </div>
         </div>
+        <nav class="workspace-tabs" aria-label="Secciones">
+          <a href="review.html">Revisión</a>
+          <a class="active" href="options.html" aria-current="page">Ajustes</a>
+        </nav>
+      </header>
+
+      <header class="page-head">
+        <h1>Ajustes</h1>
+        <p class="sub">Define cómo ExpensIA lee correos, clasifica gastos y escribe en Google Sheets.</p>
       </header>
 
       <div class="workspace">
-        <aside class="overview">
-          <section class="guide-card guide-card-primary">
-            <div class="guide-head">
-              <h3>Cómo funciona</h3>
-              <p class="guide-copy">
-                Estas son las decisiones que afectan todo el flujo.
-              </p>
-            </div>
-            <ol class="workflow-list">
-              <li class="workflow-item">
-                <span class="workflow-step">1</span>
-                <div>
-                  <strong>Entrada</strong>
-                  <p>ExpensIA solo revisa correos dentro de la etiqueta de origen.</p>
-                </div>
-              </li>
-              <li class="workflow-item">
-                <span class="workflow-step">2</span>
-                <div>
-                  <strong>Clasificación</strong>
-                  <p>La IA elige entre tus categorías y respeta las reglas de exclusión.</p>
-                </div>
-              </li>
-              <li class="workflow-item">
-                <span class="workflow-step">3</span>
-                <div>
-                  <strong>Salida</strong>
-                  <p>Cada gasto nuevo se guarda en la hoja y luego el correo pasa a procesados.</p>
-                </div>
-              </li>
-            </ol>
-          </section>
-
-          <section class="guide-card">
-            <h3>Buenas prácticas</h3>
-            <ul class="guide-list">
-              <li>Usa categorías cortas y fáciles de distinguir.</li>
-              <li>Confirma que la pestaña ya exista en tu spreadsheet.</li>
-              <li>Crea reglas solo para casos que se repiten.</li>
-            </ul>
-          </section>
+        <aside class="settings-sidebar">
+          <div class="sidebar-title">Configuración</div>
+          <nav class="settings-nav" aria-label="Ajustes">
+            <button type="button" class="active" data-section="entrada" aria-controls="entrada">Entrada</button>
+            <button type="button" data-section="destino" aria-controls="destino">Destino</button>
+            <button type="button" data-section="clasificacion" aria-controls="clasificacion">Clasificación</button>
+            <button type="button" data-section="reglas" aria-controls="reglas">Reglas</button>
+          </nav>
         </aside>
 
         <main class="editor">
-          <section class="card">
+          <section id="entrada" class="card settings-panel">
             <div class="section-head">
               <div>
-                <h3>Etiquetas de Gmail</h3>
-                <p class="section-copy">
-                  Define qué correos entran al flujo y a qué etiqueta pasan después.
-                </p>
+                <h2>Entrada</h2>
+                <p class="section-copy">Correos que ExpensIA debe procesar.</p>
               </div>
             </div>
 
@@ -86,13 +63,11 @@
             </div>
           </section>
 
-          <section class="card">
+          <section id="destino" class="card settings-panel" hidden>
             <div class="section-head">
               <div>
-                <h3>Destino en Google Sheets</h3>
-                <p class="section-copy">
-                  Cada gasto nuevo se agrega en este archivo y en esta pestaña.
-                </p>
+                <h2>Destino</h2>
+                <p class="section-copy">Spreadsheet donde se guardan los gastos aprobados.</p>
               </div>
             </div>
 
@@ -100,35 +75,24 @@
               <label class="field-block">
                 <span class="field-label">URL del spreadsheet</span>
                 <input id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." />
-                <span class="hint">URL completa del archivo.</span>
+                <span class="hint">Pega la URL completa del archivo de Google Sheets.</span>
               </label>
 
               <label class="field-block">
                 <span class="field-label">Nombre de la pestaña</span>
                 <input id="sheetTab" placeholder="draft" />
-                <span class="hint">Lugar donde se escriben los gastos.</span>
+                <span class="hint">Pestaña donde se escriben los gastos.</span>
               </label>
             </div>
           </section>
 
-          <section class="card">
+          <section id="clasificacion" class="card settings-panel" hidden>
             <div class="section-head">
               <div>
-                <h3>Categorías</h3>
-                <p class="section-copy">
-                  La IA solo podrá elegir entre estas opciones.
-                </p>
+                <h2>Clasificación</h2>
+                <p class="section-copy">Categorías disponibles para clasificar gastos.</p>
               </div>
               <div class="section-side-note">Una por línea</div>
-            </div>
-
-            <div class="info-strip">
-              <strong>Para clasificar mejor</strong>
-              <ul class="guide-list compact inline-guide-list">
-                <li>Usa nombres simples como Casa, Gasolina o Suscripciones.</li>
-                <li>Evita tener dos categorías para el mismo tipo de gasto.</li>
-                <li>Si algo se confunde seguido, resuélvelo con una regla.</li>
-              </ul>
             </div>
 
             <label class="field-block field-block-full">
@@ -138,20 +102,18 @@
                 rows="10"
                 placeholder="supermarket&#10;restaurants&#10;subscriptions"
               ></textarea>
-              <span class="hint">La IA usará esta lista al clasificar.</span>
+              <span class="hint">ExpensIA usará esta lista al clasificar y revisar gastos.</span>
             </label>
           </section>
 
-          <section class="card">
+          <section id="reglas" class="card settings-panel" hidden>
             <div class="section-head">
               <div>
-                <h3>Lista de exclusión</h3>
-                <p class="section-copy">
-                  Fuerza una categoría cuando aparezca una palabra o frase concreta.
-                </p>
+                <h2>Reglas</h2>
+                <p class="section-copy">Excepciones para casos repetidos.</p>
               </div>
-              <button id="addExclusionRule" type="button" class="circle-btn" aria-label="Agregar regla">
-                Agregar regla
+              <button id="addExclusionRule" type="button" class="icon-action" aria-label="Agregar regla" title="Agregar regla">
+                <span aria-hidden="true">+</span>
               </button>
             </div>
 
@@ -164,22 +126,20 @@
 
             <div id="exclusionRulesList" class="rules-list"></div>
           </section>
+
+          <div class="actions">
+            <div class="action-copy">
+              <strong>Guardar cambios</strong>
+              <p class="action-note">Los cambios se aplican en la próxima sincronización.</p>
+            </div>
+
+            <div class="action-buttons">
+              <span id="status" aria-live="polite"></span>
+              <button id="save" class="primary">Guardar ajustes</button>
+              <button id="reset" class="secondary">Restablecer</button>
+            </div>
+          </div>
         </main>
-      </div>
-
-      <div class="actions">
-        <div class="action-copy">
-          <strong>Guarda cuando termines</strong>
-          <p class="action-note">
-            Restablecer vuelve a la configuración inicial.
-          </p>
-        </div>
-
-        <div class="action-buttons">
-          <span id="status" aria-live="polite"></span>
-          <button id="save" class="primary">Guardar</button>
-          <button id="reset" class="secondary">Restablecer</button>
-        </div>
       </div>
     </div>
 

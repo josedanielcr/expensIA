@@ -9,11 +9,24 @@
   <body>
     <main class="shell">
       <header class="top">
-        <div class="brand">ExpensIA</div>
-        <button id="openSettings" class="icon-btn" aria-label="Abrir configuración">Ajustes</button>
+        <div class="brand-lockup">
+          <span class="logo-mark" aria-hidden="true">
+            <img src="assets/Logo (icon) 32.png" alt="" />
+          </span>
+          <div>
+            <div class="brand">ExpensIA</div>
+            <div class="brand-note">Gastos</div>
+          </div>
+        </div>
+        <button id="openSettings" class="icon-btn" aria-label="Abrir configuración" title="Ajustes">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 0 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.3 7A2 2 0 0 1 7.1 4.2l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 .9-1.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 0 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.6.9h.1a2 2 0 0 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z"></path>
+          </svg>
+        </button>
       </header>
 
-      <section class="card">
+      <section class="card account-card">
         <div class="label">Cuenta</div>
         <div class="status user-line" id="userLine"></div>
         <div class="row">
@@ -23,13 +36,13 @@
       </section>
 
       <section class="card sync-card">
-        <div class="label">Sincronización</div>
+        <div class="label">Sincronizar</div>
         <button id="syncBtn" class="primary" disabled>Sincronizar gastos</button>
 
         <div class="sync-filter">
           <label class="range-toggle" for="useDateRange">
             <input id="useDateRange" type="checkbox" />
-            <span class="range-title">Filtrar por rango de fechas</span>
+            <span class="range-title">Usar fechas específicas</span>
           </label>
           <div id="dateRangeFields" class="date-range-fields hidden">
             <label class="date-field">
@@ -51,7 +64,7 @@
           <div id="processLog" class="process-log"></div>
         </div>
 
-        <button id="openReview" class="secondary" disabled>Revisar pendientes</button>
+        <button id="openReview" class="secondary" disabled>Abrir revisión</button>
       </section>
     </main>
 

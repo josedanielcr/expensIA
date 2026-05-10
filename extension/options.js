@@ -21,6 +21,8 @@ const UI = {
   STATUS_CLEAR_DELAY_MS: 2500,
 };
 
+const SETTINGS_SECTIONS = ["entrada", "destino", "clasificacion", "reglas"];
+
 const DEFAULTS = {
   sourceLabel: "ToParse",
   processedLabel: "AI Processed",
@@ -31,6 +33,35 @@ const DEFAULTS = {
 };
 
 function $(id) { return document.getElementById(id); }
+
+function getRequestedSettingsSection() {
+  const requestedSection = window.location.hash.replace("#", "");
+  return SETTINGS_SECTIONS.includes(requestedSection) ? requestedSection : SETTINGS_SECTIONS[0];
+}
+
+function showSettingsSection(sectionId, updateHash = true) {
+  const activeSection = SETTINGS_SECTIONS.includes(sectionId) ? sectionId : SETTINGS_SECTIONS[0];
+  const navButtons = Array.from(document.querySelectorAll(".settings-nav button[data-section]"));
+  const panels = Array.from(document.querySelectorAll(".settings-panel"));
+
+  navButtons.forEach((button) => {
+    const isActive = button.dataset.section === activeSection;
+    button.classList.toggle("active", isActive);
+    if (isActive) {
+      button.setAttribute("aria-current", "page");
+    } else {
+      button.removeAttribute("aria-current");
+    }
+  });
+
+  panels.forEach((panel) => {
+    panel.hidden = panel.id !== activeSection;
+  });
+
+  if (updateHash && window.location.hash !== `#${activeSection}`) {
+    window.history.replaceState(null, "", `#${activeSection}`);
+  }
+}
 
 function categoriesToText(list) {
   return (list || []).join(UI.LINE_BREAK);
@@ -78,7 +109,7 @@ function renderExclusionRules() {
   if (categories.length === 0) {
     const empty = document.createElement("p");
     empty.className = "hint";
-    empty.textContent = "Agrega categorías para poder crear reglas de exclusión.";
+    empty.textContent = "Primero agrega al menos una categoría.";
     listEl.appendChild(empty);
     return;
   }
@@ -182,7 +213,13 @@ async function resetSettings() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  showSettingsSection(getRequestedSettingsSection(), false);
   await loadSettings();
+
+  document.querySelectorAll(".settings-nav button[data-section]").forEach((button) => {
+    button.addEventListener("click", () => showSettingsSection(button.dataset.section));
+  });
+  window.addEventListener("hashchange", () => showSettingsSection(getRequestedSettingsSection(), false));
 
   $(FIELD_IDS.CATEGORIES).addEventListener("input", () => {
     exclusionRulesState = normalizeExclusionRules(readExclusionRulesFromUI(), getCurrentCategories());

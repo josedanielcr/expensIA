@@ -9,7 +9,7 @@ const DEFAULT_CATEGORIES = [
 
 const REVIEW_REASONS = {
   confidence_score_below_auto_approval_threshold: "La confianza quedó por debajo del umbral de aprobación automática.",
-  confidence_score_missing: "La transacción no tiene score de confianza.",
+  confidence_score_missing: "La transacción no tiene confianza calculada.",
 };
 
 const MESSAGE_TYPES = {
@@ -91,14 +91,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function formatConfidence(score) {
-    if (typeof score !== "number") return "Sin score";
+    if (typeof score !== "number") return "Sin confianza";
     return `${Math.round(score * 100)}%`;
   }
 
   function getReasonText(item) {
     return REVIEW_REASONS[item.review_reason] ||
       item.review_reason ||
-      "Requiere revisión antes de enviarse a Google Sheets.";
+      "Confirma los datos antes de enviar este gasto a Google Sheets.";
   }
 
   function getSelectedItem() {
@@ -200,7 +200,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     openSettingsBtn.disabled = active;
     refreshBtn.disabled = isLoading || active;
     approveBtn.classList.toggle("loading", active);
-    approveBtnText.textContent = active ? "Aprobando" : "Aprobar";
+    approveBtnText.textContent = active ? "Aprobando" : "Aprobar y enviar a Sheets";
   }
 
   async function addCategoryFromReview() {
