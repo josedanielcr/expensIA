@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "ExpensIA - testing",
-  "version": "1.0.0",
+  "name": "ExpensIA - testing - local",
+  "version": "1.2.0",
   "description": "ExpensIA: lee correos etiquetados, extrae gastos con IA y los guarda en Google Sheets.",
   "action": {
     "default_popup": "popup.html",
