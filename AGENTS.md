@@ -9,6 +9,7 @@ Use this file as the operational guide before changing code, workflows, or manif
 
 ## Repository layout
 - `backend/`: Azure Functions (.NET isolated, solution file `EmailParserService.slnx`).
+- `backend/backend.Tests/`: backend xUnit tests.
 - `extension/`: Chrome extension source.
 - `.github/workflows/main_email-processor-ai.yml`: production deploy workflow (`main` only).
 - `.github/workflows/staging_email-processor-ai-staging.yml`: staging deploy workflow (`staging` only).
@@ -17,7 +18,14 @@ Use this file as the operational guide before changing code, workflows, or manif
 - Pushing to `main` triggers production deployment to app name `email-processor-ai`.
 - Pushing to `staging` triggers staging deployment to app name `email-processor-ai-staging`.
 - Both workflows build from `./backend` using:
-  - `dotnet build EmailParserService.slnx --configuration Release --output ./output`
+  - `dotnet build backend.csproj --configuration Release --output ./output`
+- Do not change deploy workflows back to solution-level `--output ./output` builds; `EmailParserService.slnx` includes `backend.Tests`, and solution-level output would copy test artifacts into the Function App package.
+
+## Backend testing
+- `EmailParserService.slnx` includes both the Azure Function project and `backend/backend.Tests`.
+- Run backend tests with:
+  - `dotnet test backend/EmailParserService.slnx`
+- The function app project excludes `backend.Tests/**/*.cs` so test sources are not compiled into the app.
 
 ## Extension environment behavior
 - Extension backend endpoint is resolved at runtime from `manifest.json` host permissions:
@@ -26,6 +34,45 @@ Use this file as the operational guide before changing code, workflows, or manif
 - Environment manifests:
   - `extension/manifest.prod.json`
   - `extension/manifest.staging.json`
+
+## Google token validation behavior
+- HTTP functions are anonymous at the Azure Functions trigger level and rely on `GoogleTokenValidator`.
+- `GoogleTokenValidator` must validate Google token metadata with `tokeninfo`, then enforce `GoogleTokenPolicy` before accepting a request.
+- Required Function App settings:
+  - Production (`email-processor-ai`):
+    - `GOOGLE_EXPECTED_AUDIENCE=941118571900-nggnu109q2tbad6g1v1jeosvbv99sf3f.apps.googleusercontent.com`
+    - `GOOGLE_REQUIRED_SCOPES=https://www.googleapis.com/auth/gmail.modify`
+  - Staging/local:
+    - `GOOGLE_EXPECTED_AUDIENCE=809872885598-gk190ua07acnt3hnlfgsh575bmrkg5jg.apps.googleusercontent.com`
+    - `GOOGLE_REQUIRED_SCOPES=https://www.googleapis.com/auth/gmail.modify`
+- These values are not secrets, but they are security-critical environment configuration. Keep them aligned with the matching extension manifest client ID and scopes.
+
+## Application Insights telemetry behavior
+- The backend is wired to Application Insights in `backend/Program.cs` using:
+  - `AddApplicationInsightsTelemetryWorkerService()`
+  - `ConfigureFunctionsApplicationInsights()`
+- .NET isolated Functions worker logs require removing the default Application Insights warning-only logger filter. Keep the `LoggerFilterOptions` removal in `Program.cs`; otherwise `LogInformation` traces may not appear in Application Insights.
+- Required Function App setting:
+  - `APPLICATIONINSIGHTS_CONNECTION_STRING`
+- `backend/local.settings.json` includes the local Application Insights connection string for local validation.
+- `OnEmailPush` telemetry should make each run traceable by:
+  - `FunctionName`
+  - `InvocationId`
+  - `UserEmail`
+  - `GoogleUserId`
+  - status/reason
+  - input/result counts
+  - non-transaction count
+  - USD conversion count
+  - category distribution counts
+- Do not log transaction-level financial details by default:
+  - no raw email body
+  - no bearer token or auth header
+  - no OpenAI prompt or full model response
+  - no parsed amount, date, description, merchant, or card digits
+  - no API keys, Key Vault secrets, or provider response bodies
+- `GlobalExceptionHandlingMiddleware` must keep HTTP error payloads sanitized while logging exception class/status/invocation/user context for production investigation.
+- `TelemetryContextKeys` stores shared per-invocation user telemetry keys for middleware and function logs.
 
 ## Extension packaging
 Use the script instead of manually editing `manifest.json`:
