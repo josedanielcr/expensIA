@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: './backend' # set this to the path to your web app project, defaults to the repository root
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
   DOTNET_VERSION: '10.0' # set this to the dotnet version to use
 
 jobs:
@@ -33,15 +33,15 @@ jobs:
         shell: bash
         run: |
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet build backend.csproj --configuration Release --output ./output
+          dotnet build --configuration Release --output ./output
           popd
       
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_89AB40A19D6D4843BDFB14EFF64A90CA }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E6CFDAF2A20A4EEFAAFFD21CCDE6EBF6 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_7F8C0DD6D7394BA2A1B4C4B108C9BBAD }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_911EB6872DF74E6799D87CB3D5A79C6A }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E5C124D5D2234C38857C1C23EFDA18B4 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_D765F01920164B1282DE22584623411A }}
 
       - name: 'Run Azure Functions Action'
         uses: Azure/functions-action@v1
