@@ -500,12 +500,24 @@ const BackgroundCore = {
     return match?.[1] || "";
   },
 
+  sanitizeSheetText(value) {
+    const text = String(value ?? "");
+    return /^[=+\-@]/.test(text.trimStart()) ? `'${text}` : text;
+  },
+
+  toSheetAmount(value) {
+    const text = String(value ?? "");
+    const trimmed = text.trim();
+    if (/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(trimmed)) return trimmed;
+    return BackgroundCore.sanitizeSheetText(text);
+  },
+
   toSheetRows(parsedEntries) {
     return (parsedEntries || []).map((entry) => [
-      BackgroundCore.formatDateOnly(entry?.date || ""),
-      entry?.description || "",
-      entry?.amount || "",
-      entry?.category || "",
+      BackgroundCore.sanitizeSheetText(BackgroundCore.formatDateOnly(entry?.date || "")),
+      BackgroundCore.sanitizeSheetText(entry?.description),
+      BackgroundCore.toSheetAmount(entry?.amount),
+      BackgroundCore.sanitizeSheetText(entry?.category),
     ]);
   },
 
