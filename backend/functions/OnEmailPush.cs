@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace functions;
@@ -19,6 +20,8 @@ public class OnEmailPush
     private const string ErrorEmailsRequired = "emails must contain at least one entry.";
     private const string CurrencyUsd = "USD";
     private const string CurrencyCrc = "CRC";
+    private const string NonTransactionCategory = "N/A";
+    private const string UnknownCategory = "Uncategorized";
     private const string CurrencyCodePattern = @"\(([A-Za-z]{3})\)";
     private static readonly Regex CurrencyCodeRegex = new(CurrencyCodePattern, RegexOptions.Compiled);
     private readonly ILogger<OnEmailPush> _logger;
@@ -49,24 +52,38 @@ public class OnEmailPush
     {
         var payload = await req.ReadFromJsonAsync<OnEmailPushRequest>(cancellationToken: ct);
         if (payload is null)
+        {
+            LogBadRequest(context, ErrorRequestRequired);
             return BuildBadRequest(ErrorRequestRequired);
-
-        _logger.LogInformation(
-            "OnEmailPush request received. InvocationId={InvocationId} Emails={EmailCount} Categories={CategoryCount}",
-            context.InvocationId,
-            payload.Emails.Count,
-            payload.Categories.Count);
+        }
 
         var token = ExtractTokenFromAuthorizationHeader(req);
         if (string.IsNullOrWhiteSpace(token))
+        {
+            LogBadRequest(context, ErrorTokenRequired);
             return BuildBadRequest(ErrorTokenRequired);
+        }
 
         var payloadValidationError = ValidateRequest(payload);
         if (payloadValidationError is not null)
-            return payloadValidationError;
+        {
+            LogBadRequest(context, payloadValidationError);
+            return BuildBadRequest(payloadValidationError);
+        }
 
         var owner = await _tokenValidator.ValidateTokenAsync(token, ct)
             ?? throw new UnauthorizedAccessException("Invalid Google token (empty response).");
+        var userEmail = NormalizeTelemetryValue(owner.Email);
+        var googleUserId = ResolveGoogleUserId(owner);
+        StoreTelemetryContext(context, userEmail, googleUserId);
+
+        _logger.LogInformation(
+            "OnEmailPush authenticated. FunctionName={FunctionName} InvocationId={InvocationId} UserEmail={UserEmail} GoogleUserId={GoogleUserId}",
+            FunctionName,
+            context.InvocationId,
+            userEmail,
+            googleUserId);
+
         var syncRun = await _transactionPersistenceService.StartSyncRunAsync(
             owner,
             payload.Emails.Count,
@@ -80,7 +97,7 @@ public class OnEmailPush
                 payload.Categories,
                 payload.ExclusionRules,
                 ct);
-            await ConvertUsdEntriesToCrcAsync(parsedEntries, ct);
+            var usdConversionCount = await ConvertUsdEntriesToCrcAsync(parsedEntries, ct);
             await _transactionPersistenceService.PersistParsedTransactionsAsync(
                 syncRun,
                 payload.Emails,
@@ -93,14 +110,16 @@ public class OnEmailPush
             var pendingReviewCount = parsedEntries.Count - sheetReadyEntries.Count;
             var orderedEntries = OrderEntriesByDateOldestFirst(sheetReadyEntries);
             await _transactionPersistenceService.CompleteSyncRunAsync(syncRun, ct);
-
-            _logger.LogInformation(
-                "OnEmailPush completed. InvocationId={InvocationId} SyncRunId={SyncRunId} ParsedEntries={ParsedCount} SheetReadyEntries={SheetReadyCount} PendingReviewEntries={PendingReviewCount}",
+            LogRunSummary(
                 context.InvocationId,
                 syncRun.Id,
-                parsedEntries.Count,
+                userEmail,
+                googleUserId,
+                payload,
+                parsedEntries,
                 orderedEntries.Count,
-                pendingReviewCount);
+                pendingReviewCount,
+                usdConversionCount);
 
             return BuildSuccessResponse(orderedEntries, pendingReviewCount);
         }
@@ -111,13 +130,97 @@ public class OnEmailPush
         }
     }
 
-    private IActionResult? ValidateRequest(OnEmailPushRequest payload)
+    private static string? ValidateRequest(OnEmailPushRequest payload)
     {
         if (payload.Emails.Count == 0)
-            return BuildBadRequest(ErrorEmailsRequired);
+            return ErrorEmailsRequired;
 
         return null;
     }
+
+    private void LogBadRequest(FunctionContext context, string reason)
+    {
+        _logger.LogWarning(
+            "OnEmailPush rejected request. FunctionName={FunctionName} InvocationId={InvocationId} Status={Status} Reason={Reason}",
+            FunctionName,
+            context.InvocationId,
+            "BadRequest",
+            reason);
+    }
+
+    private void LogRunSummary(
+        string invocationId,
+        Guid syncRunId,
+        string userEmail,
+        string googleUserId,
+        OnEmailPushRequest payload,
+        IReadOnlyCollection<ExpenseParseResult> entries,
+        int sheetReadyCount,
+        int pendingReviewCount,
+        int usdConversionCount)
+    {
+        _logger.LogInformation(
+            "OnEmailPush completed. FunctionName={FunctionName} InvocationId={InvocationId} Status={Status} SyncRunId={SyncRunId} UserEmail={UserEmail} GoogleUserId={GoogleUserId} EmailCount={EmailCount} CategoryCount={CategoryCount} ExclusionRuleCount={ExclusionRuleCount} ParsedEntries={ParsedCount} SheetReadyEntries={SheetReadyCount} PendingReviewEntries={PendingReviewCount} NonTransactionEntries={NonTransactionCount} UsdConversionCount={UsdConversionCount} CategoryDistribution={CategoryDistribution}",
+            FunctionName,
+            invocationId,
+            "Success",
+            syncRunId,
+            userEmail,
+            googleUserId,
+            payload.Emails.Count,
+            payload.Categories.Count,
+            payload.ExclusionRules.Count,
+            entries.Count,
+            sheetReadyCount,
+            pendingReviewCount,
+            CountNonTransactionEntries(entries),
+            usdConversionCount,
+            BuildCategoryDistribution(entries));
+    }
+
+    private static void StoreTelemetryContext(FunctionContext context, string userEmail, string googleUserId)
+    {
+        if (!string.IsNullOrWhiteSpace(userEmail))
+            context.Items[global::TelemetryContextKeys.UserEmail] = userEmail;
+
+        if (!string.IsNullOrWhiteSpace(googleUserId))
+            context.Items[global::TelemetryContextKeys.GoogleUserId] = googleUserId;
+    }
+
+    private static string ResolveGoogleUserId(GoogleTokenInfo? tokenInfo)
+    {
+        if (tokenInfo is null)
+            return string.Empty;
+
+        var userId = NormalizeTelemetryValue(tokenInfo.UserId);
+        return userId.Length > 0 ? userId : NormalizeTelemetryValue(tokenInfo.Sub);
+    }
+
+    private static int CountNonTransactionEntries(IReadOnlyCollection<ExpenseParseResult> entries) =>
+        entries.Count(entry =>
+            string.Equals(
+                NormalizeTelemetryValue(entry.Category),
+                NonTransactionCategory,
+                StringComparison.OrdinalIgnoreCase));
+
+    private static string BuildCategoryDistribution(IReadOnlyCollection<ExpenseParseResult> entries)
+    {
+        var categoryCounts = entries
+            .GroupBy(entry => NormalizeCategoryForTelemetry(entry.Category), StringComparer.OrdinalIgnoreCase)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+
+        return JsonSerializer.Serialize(categoryCounts);
+    }
+
+    private static string NormalizeCategoryForTelemetry(string? category)
+    {
+        var normalized = NormalizeTelemetryValue(category);
+        return normalized.Length == 0 ? UnknownCategory : normalized;
+    }
+
+    private static string NormalizeTelemetryValue(string? value) =>
+        value?.Trim() ?? string.Empty;
 
     private async Task<List<ExpenseParseResult>> ParseEmailsAsync(
         IReadOnlyCollection<EmailEntry> emails,
@@ -272,7 +375,7 @@ public class OnEmailPush
         return value;
     }
 
-    private async Task ConvertUsdEntriesToCrcAsync(
+    private async Task<int> ConvertUsdEntriesToCrcAsync(
         IReadOnlyCollection<ExpenseParseResult> entries,
         CancellationToken ct)
     {
@@ -280,7 +383,7 @@ public class OnEmailPush
             .Where(IsUsdCurrencyEntry)
             .ToList();
         if (usdEntries.Count == 0)
-            return;
+            return 0;
 
         var conversionRate = await _exchangeRateService.GetUsdToCrcRateAsync(ct);
         var convertedCount = 0;
@@ -297,10 +400,7 @@ public class OnEmailPush
             convertedCount++;
         }
 
-        _logger.LogInformation(
-            "USD entries converted to CRC. ConvertedEntries={ConvertedEntries} Rate={Rate}",
-            convertedCount,
-            conversionRate);
+        return convertedCount;
     }
 
     private static bool IsUsdCurrencyEntry(ExpenseParseResult entry)

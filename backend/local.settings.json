@@ -3,8 +3,9 @@
     "Values": {
         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
         "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-        "GOOGLE_EXPECTED_AUDIENCE": "",
-        "GOOGLE_REQUIRED_SCOPES": "https://www.googleapis.com/auth/gmail.readonly",
+        "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=8a4a5608-404f-4730-9e16-7018262a444b;IngestionEndpoint=https://canadacentral-1.in.applicationinsights.azure.com/;LiveEndpoint=https://canadacentral.livediagnostics.monitor.azure.com/;ApplicationId=f04be0ed-d91a-4b59-8e91-ac3eec212b46",
+        "GOOGLE_EXPECTED_AUDIENCE": "809872885598-gk190ua07acnt3hnlfgsh575bmrkg5jg.apps.googleusercontent.com",
+        "GOOGLE_REQUIRED_SCOPES": "https://www.googleapis.com/auth/gmail.modify",
         "KEY_VAULT_LOAD_ON_STARTUP": "false",
         "KEY_VAULT_URI": "https://ai-gastos-vault.vault.azure.net/",
         "OPENAI_MODEL": "gpt-5.4-nano",
